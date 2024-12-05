@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Web3 from 'web3';
 import { create } from 'ipfs-http-client'; // Import IPFS client
-import IdentityContract from '../../artifacts/contracts/Identity.sol/Identity.json'; // Ensure this path is correct
-
+import IdentityContract from './artifacts/Identity.json';
 
 const ipfs = create({ host: 'ipfs.infura.io', port: 5001, protocol: 'https' }); // IPFS client configuration
 
@@ -12,6 +11,7 @@ const App = () => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [ipfsHash, setIpfsHash] = useState('');
+    const [deployedAddress, setDeployedAddress] = useState('');
 
     // Initialize Web3 and load blockchain data
     const loadBlockchainData = async () => {
@@ -32,15 +32,33 @@ const App = () => {
                         deployedNetwork.address
                     );
                     setContract(instance);
+                    setDeployedAddress(deployedNetwork.address);
                     console.log("Contract instance loaded:", instance);
                 } else {
-                    alert('Smart contract not deployed to detected network.');
+                    alert('Smart contract not deployed to detected network. Deploying now...');
+                    deployContract(web3, accounts[0]); // Deploy the contract
                 }
             } else {
                 alert('Please install MetaMask to use this application.');
             }
         } catch (error) {
             console.error("Error loading Web3 or contract:", error);
+        }
+    };
+
+    // Deploy the contract
+    const deployContract = async (web3, account) => {
+        try {
+            const contractInstance = new web3.eth.Contract(IdentityContract.abi);
+            const deployedContract = await contractInstance
+                .deploy({ data: IdentityContract.bytecode })
+                .send({ from: account });
+            setContract(deployedContract);
+            setDeployedAddress(deployedContract.options.address);
+            console.log("Contract deployed at address:", deployedContract.options.address);
+        } catch (error) {
+            console.error("Error deploying contract:", error);
+            alert("Failed to deploy the contract.");
         }
     };
 
@@ -78,6 +96,7 @@ const App = () => {
         <div>
             <h1>Decentralized Identity System</h1>
             <p>Connected Account: {account}</p>
+            {deployedAddress && <p>Contract Address: {deployedAddress}</p>}
             <input
                 type="text"
                 placeholder="Name"
